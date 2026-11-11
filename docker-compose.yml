@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - ENV=production
+      - CORS_ORIGINS=http://localhost:8000,http://localhost:3000
+      - CHROMA_PERSIST_DIR=/app/data/chroma_db
+    volumes:
+      # Persist vector database and page cache across restarts
+      - chroma_data:/app/data/chroma_db
+      - page_cache:/app/data/page_cache
+      # Mount local PDFs for ingestion
+      - ./data/pdf data:/app/data/pdf data:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  chroma_data:
+  page_cache:
+
