@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 _embeddings: OpenAIEmbeddings | None = None
 _vectorstore: Chroma | None = None
+_emb_lock = threading.Lock()
 _vs_lock = threading.Lock()
 
 
@@ -29,7 +30,7 @@ def get_embeddings() -> OpenAIEmbeddings:
     """Singleton OpenAI embedding model (text-embedding-3-small)."""
     global _embeddings
     if _embeddings is None:
-        with _vs_lock:
+        with _emb_lock:
             if _embeddings is None:
                 _embeddings = OpenAIEmbeddings(
                     model=EMBEDDING_MODEL,

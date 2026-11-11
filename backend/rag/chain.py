@@ -120,42 +120,43 @@ async def rag_query_stream(
       - event: token (streamed text tokens)
       - event: done (signals stream end)
     """
-    retriever = get_retriever()
-    docs = retriever.invoke(question)
-
-    if not docs:
-        # Emit empty sources and no context answer
-        yield f"event: sources\ndata: {json.dumps([])}\n\n"
-        yield f"event: token\ndata: {json.dumps({'token': 'I don\'t know based on the available documents.'})}\n\n"
-        yield "event: done\ndata: {}\n\n"
-        return
-
-    context_string, sources = format_context_and_sources(docs)
-
-    # First send retrieved source cards so UI can display them immediately
-    yield f"event: sources\ndata: {json.dumps(sources)}\n\n"
-
-    system_message = SYSTEM_PROMPT.format(context=context_string)
-    messages = [{"role": "system", "content": system_message}]
-
-    if chat_history:
-        for turn in chat_history[-6:]:
-            role = turn.get("role", "user")
-            content = turn.get("content", "")
-            if role in ["user", "assistant"] and content:
-                messages.append({"role": role, "content": content})
-
-    messages.append({"role": "user", "content": question})
-
-    streaming_llm = get_streaming_llm()
-
     try:
+        retriever = get_retriever()
+        docs = retriever.invoke(question)
+
+        if not docs:
+            # Emit empty sources and no context answer
+            yield f"event: sources\ndata: {json.dumps([])}\n\n"
+            yield f"event: token\ndata: {json.dumps({'token': 'I don\'t know based on the available documents.'})}\n\n"
+            yield "event: done\ndata: {}\n\n"
+            return
+
+        context_string, sources = format_context_and_sources(docs)
+
+        # First send retrieved source cards so UI can display them immediately
+        yield f"event: sources\ndata: {json.dumps(sources)}\n\n"
+
+        system_message = SYSTEM_PROMPT.format(context=context_string)
+        messages = [{"role": "system", "content": system_message}]
+
+        if chat_history:
+            for turn in chat_history[-6:]:
+                role = turn.get("role", "user")
+                content = turn.get("content", "")
+                if role in ["user", "assistant"] and content:
+                    messages.append({"role": role, "content": content})
+
+        messages.append({"role": "user", "content": question})
+
+        streaming_llm = get_streaming_llm()
+
         async for chunk in streaming_llm.astream(messages):
             token_content = chunk.content
             if token_content:
                 yield f"event: token\ndata: {json.dumps({'token': token_content})}\n\n"
+
     except Exception as e:
-        logger.error("Error during streaming generation: %s", e)
+        logger.error("Error during streaming generation: %s", e, exc_info=True)
         yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
 
     yield "event: done\ndata: {}\n\n"

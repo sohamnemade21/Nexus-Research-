@@ -104,8 +104,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS if ENV == "production" else ["*"],
     allow_credentials=ENV == "production",
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "X-API-Key", "X-Request-ID"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Register API Router with optional auth dependency
